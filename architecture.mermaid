@@ -1,0 +1,40 @@
+flowchart TD
+    Start([User pastes incident logs / JSON / screenshot]) --> Extract[Extract text + image\nfrom MultimodalTextbox]
+    Extract --> Invoke1[analysis_graph.invoke]
+
+    subgraph AG["Analysis Graph (Stage 1)"]
+        direction TB
+        Parser["🧩 parser_agent\nOne LLM call → structured incident\n(service, error, category, severity, impact)"]
+        RAG["📚 rag_agent\nSearches uploaded knowledge base\n→ root_cause + steps + confidence\n(skips if no docs uploaded)"]
+        Web["🌐 web_agent\nTavily web search → LLM summarizes\n→ root_cause + steps + confidence + sources"]
+        LLMNode["🧠 llm_agent\nModel's own knowledge only\n→ root_cause + steps + confidence"]
+        Parser --> RAG --> Web --> LLMNode
+    end
+
+    Invoke1 --> Parser
+    LLMNode --> Result[Three remediation options\nshown side-by-side with confidence scores]
+
+    Result --> Auto[Auto-select highest-confidence option\nin Radio control]
+    Auto --> Human{"👤 Human-in-the-loop\nReview & pick: RAG / Web / LLM"}
+
+    Human --> Invoke2[final_graph.invoke]
+
+    subgraph FG["Finalization Graph (Stage 2)"]
+        direction TB
+        Select["✅ select_remediation_agent\nAdopts the chosen expert's\nroot_cause + remediation steps"]
+        Cookbook["📋 cookbook_agent\nFormats numbered\nIncident Response Checklist"]
+        Select --> Cookbook
+    end
+
+    Invoke2 --> Select
+    Cookbook --> Slack["💬 Slack (direct SDK call)\nPosts formatted incident summary\nto #incidents channel"]
+    Cookbook --> Jira["🎫 JIRA (direct SDK call)\nCreates ticket with\nsummary, description, priority"]
+
+    Slack --> Done([Demo complete: ticket + Slack message live])
+    Jira --> Done
+
+    style AG fill:#1e3a5f,stroke:#4a90d9,color:#fff
+    style FG fill:#3a1e5f,stroke:#9a4ad9,color:#fff
+    style Human fill:#5f3a1e,stroke:#d99a4a,color:#fff
+    style Slack fill:#1e5f3a,stroke:#4ad99a,color:#fff
+    style Jira fill:#1e5f3a,stroke:#4ad99a,color:#fff
